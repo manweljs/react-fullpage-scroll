@@ -1,30 +1,37 @@
 import React, { ReactNode, useEffect, useState } from "react"
-import style from "../styles/style.module.sass"
-import { motion, useAnimationControls } from "framer-motion"
+import s from "../styles/style.module.sass"
+import { AnimatePresence, motion, useAnimationControls } from "framer-motion"
+import { Dots } from "./Dots"
+import { Slide } from "./Slide"
+import { SlideType } from "../types"
 
-export interface FullpageProps {
+const timeBeforeNextScroll = 500; // Durasi sebelum scroll selanjutnya diizinkan
+
+
+
+export interface FullPageProps {
     children: ReactNode
     scrollDuration?: number
+    type?: SlideType
 }
 
-export function Fullpage(props: FullpageProps) {
-    const { children, scrollDuration = .6 } = props
+export function FullPage(props: FullPageProps) {
+    const { children, scrollDuration = .6, type = "slide" } = props
 
     const containerRef = React.useRef<HTMLDivElement>(null);
+    const childCount = React.Children.count(children)
 
     const [isScrollingAllowed, setIsScrollingAllowed] = useState(true);
-    const [childCount, setChildCount] = useState(React.Children.count(children));
     const [activeChild, setActiveChild] = useState(0);
+    const [slides, setSlides] = useState<any[]>([]);
+
+    useEffect(() => {
+        setSlides(React.Children.toArray(children));
+    }, [children]);
 
     const controls = useAnimationControls();
 
-
-
-    console.log('activeChild', activeChild)
-    console.log('childCount', childCount)
-
     const handleActiveChild = (index: number, childCount: number) => {
-        console.log('childCount di handle active child saat di scrol : ', childCount)
         setActiveChild(prev => {
             let nextIndex = prev + index;
             if (nextIndex >= childCount) {
@@ -39,8 +46,8 @@ export function Fullpage(props: FullpageProps) {
 
 
     const animateScroll = (newIndex: number) => {
-        // const vh = Math.max(document.documentElement.clientHeight, window.innerHeight);
-        const targetY = window.innerHeight * newIndex; // Ini harus positif karena itu adalah posisi Y target
+        const vh = Math.max(document.documentElement.clientHeight, window.innerHeight);
+        const targetY = vh * newIndex;
         smoothScrollTo(targetY, scrollDuration * 1000);
     };
 
@@ -49,28 +56,26 @@ export function Fullpage(props: FullpageProps) {
     }, []);
 
     useEffect(() => {
-        console.log('animate scrol ke ', activeChild)
         if (activeChild < 0 || activeChild >= childCount) return;
         animateScroll(activeChild);
     }, [activeChild]);
 
     const handleScroll = (e: WheelEvent) => {
+        console.log('isScrollingAllowed', isScrollingAllowed)
         e.preventDefault();
         if (!isScrollingAllowed) return;
 
         setIsScrollingAllowed(false); // Mencegah scrolling selanjutnya
 
         const direction = e.deltaY > 0 ? 1 : -1;
-        console.log('activeChild', activeChild)
-        console.log('direction', direction)
+
         handleActiveChild(direction, childCount);
 
         setTimeout(() => {
             setIsScrollingAllowed(true);
-        }, 400); // Sesuaikan dengan durasi animasi scroll
+        }, timeBeforeNextScroll); // Sesuaikan dengan durasi animasi scroll
     };
 
-    console.log('activeChild ------>>>> ', activeChild)
 
     useEffect(() => {
         // Add event listener with the correct event type
@@ -82,49 +87,39 @@ export function Fullpage(props: FullpageProps) {
         };
     }, [isScrollingAllowed]);
 
-    useEffect(() => {
-        setChildCount(React.Children.count(children));
-    }, [children]);
-
     return (
-        <>
+        <AnimatePresence >
             <motion.div
                 ref={containerRef}
                 animate={controls}
-                className={style.fullpage}>
-                {children}
+                className={s.fullpage}
+                key="fullpage"
+            >
+                {slides.map((slide, index) => (
+                    <Slide
+                        sticky={type === "card" ? true : false}
+                        key={index}
+                        index={index}
+                        {...slide.props}
+                        duration={scrollDuration}
+                        active={index === activeChild}
+                        activeSlide={activeChild}
+                    >
+                        {slide.props.children}
+                    </Slide>
 
+                ))}
             </motion.div>
             <Dots
                 childCount={childCount}
                 activeChild={activeChild}
                 setActiveChild={setActiveChild}
             />
-        </>
+        </AnimatePresence>
     )
 }
 
-const Dots = (props: {
-    childCount: number,
-    activeChild: number,
-    setActiveChild: (index: number) => void
-}) => {
-    const { childCount, activeChild, setActiveChild } = props;
 
-    return (
-        <ul className={style.dots}>
-            {Array.from({ length: childCount }, (_, i) => (
-                <motion.li
-                    key={i}
-                    animate={activeChild === i ? { scale: 1 } : { scale: .5 }}
-                    transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                    className={style.dot}
-                    onClick={() => setActiveChild(i)}
-                />
-            ))}
-        </ul>
-    )
-}
 
 
 const smoothScrollTo = (endY: number, duration: number) => {
@@ -142,11 +137,17 @@ const smoothScrollTo = (endY: number, duration: number) => {
     const animationLoop = () => {
         const currentTime = new Date().getTime() - startTime;
         const newY = easeInOutQuad(currentTime, startY, distance, duration);
-        window.scrollTo(0, newY);
+
         if (currentTime < duration) {
+            window.scrollTo(0, newY);
             requestAnimationFrame(animationLoop);
+        } else {
+            // Saat animasi selesai, paksa scroll ke posisi target pastikan ini kelipatan vh * activeChild.
+            window.scrollTo(0, endY);
         }
     };
 
     requestAnimationFrame(animationLoop);
 };
+
+

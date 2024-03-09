@@ -1,25 +1,27 @@
-import { Fullpage } from "./components/Fullpage"
+import { FullPage } from "./components/FullPage"
 import { Slide } from "./components/Slide"
 
+const pages = [
+  { backgroundColor: "#282c34" },
+  { backgroundColor: "green" },
+  { backgroundColor: "brown" },
+  { backgroundColor: "#ff5f45" },
+  { backgroundColor: "grey" },
+  { backgroundColor: "red" },
+  { backgroundColor: "pink" },
+  { backgroundColor: "purple" },
+]
 
 function App() {
 
   return (
-    <Fullpage>
-      <Slide backgroundColor="#282c34">
-        <h1>Slide 1</h1>
-      </Slide>
-      <Slide backgroundColor="green" >
-        <h1>Slide 2</h1>
-      </Slide>
-      <Slide backgroundColor="brown">
-        <h1>Slide 3</h1>
-      </Slide>
-
-      {/* <Slide backgroundColor="#ff5f45">
-        <h1>Slide 4</h1>
-      </Slide> */}
-    </Fullpage>
+    <FullPage type="card">
+      {pages.map((page, index) => (
+        <Slide key={index} backgroundColor={page.backgroundColor}>
+          <h1>Slide {index + 1}</h1>
+        </Slide>
+      ))}
+    </FullPage>
   )
 }
 
